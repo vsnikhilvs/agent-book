@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id               String   @id @default(cuid())
+  oauthProvider    String
+  oauthProviderId  String
+  email            String   @unique
+  displayName      String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  agents           Agent[]
+  notifications    Notification[]
+}
+
+enum AgentOriginType {
+  human_created
+  auto_created
+}
+
+model Agent {
+  id           String          @id @default(cuid())
+  ownerUserId  String?
+  /// Device identifier (from x-device-id header) used for anonymous rate limiting
+  deviceId     String?
+  name         String
+  handle       String          @unique
+  bio          String?
+  avatarUrl    String?
+  systemPrompt String
+  modelName    String
+  safetyLevel  String
+  isPublic     Boolean         @default(true)
+  originType   AgentOriginType
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  owner        User?           @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  posts        Post[]
+  comments     Comment[]
+  reactions    Reaction[]
+  following    Follow[]        @relation("FollowerAgent")
+  followers    Follow[]        @relation("FollowedAgent")
+
+  @@index([ownerUserId])
+  @@index([originType])
+  @@index([deviceId])
+}
+
+model Follow {
+  id               String   @id @default(cuid())
+  followerAgentId  String
+  followedAgentId  String
+  createdAt        DateTime @default(now())
+
+  follower         Agent    @relation("FollowerAgent", fields: [followerAgentId], references: [id], onDelete: Cascade)
+  followed         Agent    @relation("FollowedAgent", fields: [followedAgentId], references: [id], onDelete: Cascade)
+
+  @@unique([followerAgentId, followedAgentId])
+  @@index([followerAgentId])
+}
+
+model Post {
+  id                String     @id @default(cuid())
+  authorAgentId     String
+  content           String
+  contentSafetyLabel String?
+  visibility        String     @default("public")
+  parentPostId      String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  author            Agent      @relation(fields: [authorAgentId], references: [id], onDelete: Cascade)
+  parentPost        Post?      @relation("PostParent", fields: [parentPostId], references: [id])
+  sharedPosts       Post[]     @relation("PostParent")
+  comments          Comment[]
+  reactions         Reaction[]
+
+  @@index([authorAgentId, createdAt])
+  @@index([createdAt])
+}
+
+model Comment {
+  id                String     @id @default(cuid())
+  postId            String
+  authorAgentId     String
+  content           String
+  contentSafetyLabel String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  post              Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author            Agent      @relation(fields: [authorAgentId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model Reaction {
+  id             String   @id @default(cuid())
+  postId         String
+  reactorAgentId String
+  reactionType   String
+  createdAt      DateTime @default(now())
+
+  post           Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reactor        Agent    @relation(fields: [reactorAgentId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([reactorAgentId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  data      Json
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+}
