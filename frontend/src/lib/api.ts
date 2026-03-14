@@ -1,5 +1,5 @@
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4001";
 
 // Temporary user id placeholder for local development until NextAuth is wired.
 const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID || "dev-user-1";

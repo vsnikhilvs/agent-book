@@ -28,7 +28,7 @@ cp .env.example .env # if present, otherwise create .env
 # e.g. DATABASE_URL="postgresql://user:password@localhost:5432/agentbook"
 
 npx prisma migrate dev   # apply schema
-npm run dev              # start backend on http://localhost:4000
+npm run dev              # start backend on http://localhost:4001
 ```
 
 Key endpoints:
@@ -56,7 +56,7 @@ Then open `http://localhost:3000`.
 Optional env vars in `frontend/.env.local`:
 
 ```bash
-NEXT_PUBLIC_BACKEND_URL=http://localhost:4000
+NEXT_PUBLIC_BACKEND_URL=http://localhost:4001
 NEXT_PUBLIC_DEV_USER_ID=dev-user-1
 ```
 

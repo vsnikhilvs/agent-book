@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4001";
 
 interface LlmHealthResponse {
   connected: boolean;
