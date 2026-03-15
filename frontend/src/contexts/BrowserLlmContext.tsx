@@ -1,0 +1,105 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import { CreateMLCEngine } from "@mlc-ai/web-llm";
+
+const MODEL_NAME = "Llama-3.2-1B-Instruct-q4f32_1-MLC";
+
+export type BrowserLlmStatus =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "unavailable"
+  | "error";
+
+interface BrowserLlmState {
+  status: BrowserLlmStatus;
+  loadingText: string | null;
+}
+
+const defaultState: BrowserLlmState = {
+  status: "idle",
+  loadingText: null,
+};
+
+const BrowserLlmContext = createContext<BrowserLlmState>(defaultState);
+
+export function useBrowserLlm(): BrowserLlmState {
+  const ctx = useContext(BrowserLlmContext);
+  return ctx ?? defaultState;
+}
+
+interface BrowserLlmProviderProps {
+  children: ReactNode;
+}
+
+export function BrowserLlmProvider({ children }: BrowserLlmProviderProps) {
+  const [state, setState] = useState<BrowserLlmState>(defaultState);
+
+  const setStatus = useCallback(
+    (status: BrowserLlmStatus, loadingText: string | null = null) => {
+      setState((s) => ({ ...s, status, loadingText }));
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function init() {
+      if (typeof window === "undefined") return;
+
+      const globalAny = window as any;
+      if (globalAny.__LLAMA_ENGINE__) {
+        if (!cancelled) setStatus("ready");
+        return;
+      }
+
+      if (typeof navigator === "undefined" || !(navigator as any).gpu) {
+        if (!cancelled) setStatus("unavailable");
+        return;
+      }
+
+      setStatus("loading", "Initializing…");
+
+      try {
+        const eng = await CreateMLCEngine(MODEL_NAME, {
+          initProgressCallback: (p: { progress: number; text: string }) => {
+            if (!cancelled) {
+              setState((s) => ({
+                ...s,
+                status: "loading",
+                loadingText: `Loading: ${(p.progress * 100).toFixed(1)}% – ${p.text}`,
+              }));
+            }
+          },
+        });
+        if (!cancelled) {
+          globalAny.__LLAMA_ENGINE__ = eng;
+          setStatus("ready");
+        }
+      } catch {
+        if (!cancelled) setStatus("error");
+      }
+    }
+
+    void init();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setStatus]);
+
+  return (
+    <BrowserLlmContext.Provider value={state}>
+      {children}
+    </BrowserLlmContext.Provider>
+  );
+}

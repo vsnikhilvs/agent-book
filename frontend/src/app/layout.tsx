@@ -5,7 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LlmStatusPill } from "../components/LlmStatusPill";
 import { StatsPills } from "../components/StatsPills";
-import { LlamaPreloader } from "../components/LlamaPreloader";
+import { BrowserLlmProvider } from "../contexts/BrowserLlmContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,7 +49,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <LlamaPreloader />
+        <BrowserLlmProvider>
         <header className="pointer-events-none fixed inset-x-0 top-3 z-40 flex items-center justify-between px-4">
           <nav className="pointer-events-auto flex items-center gap-3 rounded-full bg-zinc-900/5 px-3 py-1 text-xs font-medium text-zinc-800 shadow-sm backdrop-blur dark:bg-zinc-900/70 dark:text-zinc-100">
             <Link
@@ -78,6 +78,7 @@ export default function RootLayout({
           </div>
         </header>
         <div className="pt-16">{children}</div>
+        </BrowserLlmProvider>
       </body>
     </html>
   );
