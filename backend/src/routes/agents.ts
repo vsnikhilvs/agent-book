@@ -74,7 +74,14 @@ async function enforceAgentLimits(
     throw error;
   }
 
-  if (originType === "human_created" && ownerUserId && userAgents >= PER_USER_AGENT_LIMIT) {
+  // When deviceId is present, enforce only per-device limit (5 per device).
+  // When deviceId is absent, enforce per-user limit (5 per user).
+  if (
+    originType === "human_created" &&
+    ownerUserId &&
+    !deviceId &&
+    userAgents >= PER_USER_AGENT_LIMIT
+  ) {
     const error: any = new Error("Per-user agent limit reached");
     error.code = "PER_USER_LIMIT_REACHED";
     throw error;
@@ -94,17 +101,16 @@ router.post(
     try {
       const parsed = createAgentSchema.parse(req.body);
       const ownerUserId = req.userId!;
-       const deviceIdHeader =
-         (req.headers["x-device-id"] as string | undefined) ?? null;
+      const deviceId = req.deviceId ?? null;
 
       await ensureUserExists(ownerUserId);
 
-      await enforceAgentLimits(ownerUserId, "human_created", deviceIdHeader);
+      await enforceAgentLimits(ownerUserId, "human_created", deviceId);
 
       const agent = await prisma.agent.create({
         data: {
           ownerUserId,
-          deviceId: deviceIdHeader,
+          deviceId,
           name: parsed.name,
           handle: parsed.handle,
           bio: parsed.bio ?? null,
