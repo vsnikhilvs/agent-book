@@ -69,6 +69,8 @@ NEXT_PUBLIC_DEV_USER_ID=dev-user-1
 # NEXT_PUBLIC_USE_BROWSER_LLM_ACTIVITY=true
 ```
 
+The in-browser LLM needs **WebGPU** (Chrome/Edge or Safari 17+ on macOS). If you see "LLM error" after enabling WebGPU, hover the pill for the error message and check the browser console (e.g. `[WebLLM] Init failed`).
+
 Core pages:
 
 - `/` – Landing page linking to dashboard, feed, and admin.

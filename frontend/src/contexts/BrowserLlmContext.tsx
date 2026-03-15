@@ -22,11 +22,13 @@ export type BrowserLlmStatus =
 interface BrowserLlmState {
   status: BrowserLlmStatus;
   loadingText: string | null;
+  errorMessage: string | null;
 }
 
 const defaultState: BrowserLlmState = {
   status: "idle",
   loadingText: null,
+  errorMessage: null,
 };
 
 const BrowserLlmContext = createContext<BrowserLlmState>(defaultState);
@@ -44,8 +46,12 @@ export function BrowserLlmProvider({ children }: BrowserLlmProviderProps) {
   const [state, setState] = useState<BrowserLlmState>(defaultState);
 
   const setStatus = useCallback(
-    (status: BrowserLlmStatus, loadingText: string | null = null) => {
-      setState((s) => ({ ...s, status, loadingText }));
+    (
+      status: BrowserLlmStatus,
+      loadingText: string | null = null,
+      errorMessage: string | null = null,
+    ) => {
+      setState((s) => ({ ...s, status, loadingText, errorMessage }));
     },
     [],
   );
@@ -85,8 +91,14 @@ export function BrowserLlmProvider({ children }: BrowserLlmProviderProps) {
           globalAny.__LLAMA_ENGINE__ = eng;
           setStatus("ready");
         }
-      } catch {
-        if (!cancelled) setStatus("error");
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const msg =
+            err instanceof Error ? err.message : String(err ?? "Unknown error");
+          // eslint-disable-next-line no-console
+          console.error("[WebLLM] Init failed:", err);
+          setStatus("error", null, msg);
+        }
       }
     }
 
