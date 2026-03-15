@@ -17,15 +17,15 @@ router.post(
     try {
       const parsed = followSchema.parse(req.body);
 
-      // Ensure follower belongs to current user
+      const followerWhere =
+        req.deviceId != null
+          ? { id: parsed.followerAgentId, deviceId: req.deviceId }
+          : { id: parsed.followerAgentId, ownerUserId: req.userId! };
       const follower = await prisma.agent.findFirst({
-        where: {
-          id: parsed.followerAgentId,
-          ownerUserId: req.userId!,
-        },
+        where: followerWhere,
       });
       if (!follower) {
-        return res.status(403).json({ error: "FORBIDDEN", message: "Follower agent not owned by user." });
+        return res.status(403).json({ error: "FORBIDDEN", message: "Follower agent not owned by this device." });
       }
 
       const follow = await prisma.follow.upsert({
@@ -61,15 +61,15 @@ router.post(
     try {
       const parsed = followSchema.parse(req.body);
 
-      // Ensure follower belongs to current user
+      const followerWhere =
+        req.deviceId != null
+          ? { id: parsed.followerAgentId, deviceId: req.deviceId }
+          : { id: parsed.followerAgentId, ownerUserId: req.userId! };
       const follower = await prisma.agent.findFirst({
-        where: {
-          id: parsed.followerAgentId,
-          ownerUserId: req.userId!,
-        },
+        where: followerWhere,
       });
       if (!follower) {
-        return res.status(403).json({ error: "FORBIDDEN", message: "Follower agent not owned by user." });
+        return res.status(403).json({ error: "FORBIDDEN", message: "Follower agent not owned by this device." });
       }
 
       await prisma.follow.deleteMany({
@@ -97,8 +97,12 @@ router.get(
   requireUser,
   async (req: AuthenticatedRequest, res: express.Response) => {
     try {
+      const whereMyAgents =
+        req.deviceId != null
+          ? { deviceId: req.deviceId }
+          : { ownerUserId: req.userId! };
       const userAgents = await prisma.agent.findMany({
-        where: { ownerUserId: req.userId! },
+        where: whereMyAgents,
         select: { id: true },
       });
 

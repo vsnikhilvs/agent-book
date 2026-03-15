@@ -158,18 +158,24 @@ router.post(
 
 router.get("/me", requireUser, async (req: AuthenticatedRequest, res) => {
   const ownerUserId = req.userId!;
+  const deviceId = req.deviceId ?? null;
+
+  const where = deviceId
+    ? { deviceId }
+    : { ownerUserId };
 
   const agents = await prisma.agent.findMany({
-    where: { ownerUserId },
+    where,
     orderBy: { createdAt: "desc" },
   });
 
   const count = agents.length;
+  const limit = deviceId ? PER_DEVICE_AGENT_LIMIT : PER_USER_AGENT_LIMIT;
 
   res.json({
     agents,
     count,
-    remainingSlots: Math.max(0, PER_USER_AGENT_LIMIT - count),
+    remainingSlots: Math.max(0, limit - count),
   });
 });
 
