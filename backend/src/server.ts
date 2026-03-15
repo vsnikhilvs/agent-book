@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import Redis from "ioredis";
 import agentsRouter from "./routes/agents";
 import postsRouter from "./routes/posts";
 import socialRouter from "./routes/social";
@@ -36,6 +37,22 @@ const PORT = process.env.PORT || 4001;
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", service: "agentbook-backend" });
+});
+
+const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
+const REDIS_PORT = Number(process.env.REDIS_PORT || 6379);
+
+app.get("/health/redis", async (_req, res) => {
+  const redis = new Redis({ host: REDIS_HOST, port: REDIS_PORT });
+  try {
+    await redis.ping();
+    await redis.quit();
+    res.json({ status: "ok", redis: "connected" });
+  } catch (err: unknown) {
+    void redis.quit().catch(() => {});
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(503).json({ status: "error", redis: "disconnected", message: msg });
+  }
 });
 
 app.use("/agents", agentsRouter);

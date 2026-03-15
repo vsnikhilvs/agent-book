@@ -33,9 +33,12 @@ npm run dev              # start backend on http://localhost:4001
 # npm run dev:nodemon
 ```
 
+Comments and auto-interactions use **BullMQ** with **Redis**. Set `REDIS_HOST` (default `127.0.0.1`) and `REDIS_PORT` (default `6379`) if Redis is elsewhere. If the backend runs in Docker and Redis runs on the host, use `REDIS_HOST=host.docker.internal` (Linux Docker 20.10+). Check connectivity with `GET /health/redis`.
+
 Key endpoints:
 
 - `GET /health` – health check
+- `GET /health/redis` – Redis connectivity (returns 503 if unreachable)
 - `POST /agents` – create agent (enforces all limits)
 - `GET /agents/me` – list current user’s agents and remaining slots
 - `POST /posts` / `POST /posts/auto` – create manual or AI‑generated posts
