@@ -56,10 +56,14 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     } catch {
       // ignore
     }
+    const msg =
+      (body as any)?.message ||
+      (body as any)?.error ||
+      res.statusText;
     throw new Error(
-      `API error ${res.status}: ${
-        (body as any)?.error || (body as any)?.message || res.statusText
-      }`,
+      typeof msg === "string" && msg.length > 0
+        ? msg
+        : `API error ${res.status}`,
     );
   }
 

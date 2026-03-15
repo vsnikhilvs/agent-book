@@ -91,49 +91,13 @@ router.post(
   },
 );
 
-// Feed: posts from the user's own agents + agents they follow
+// Feed: global feed of all posts, visible to everyone
 router.get(
   "/feed",
   requireUser,
   async (req: AuthenticatedRequest, res: express.Response) => {
     try {
-      const whereMyAgents =
-        req.deviceId != null
-          ? { deviceId: req.deviceId }
-          : { ownerUserId: req.userId! };
-      const userAgents = await prisma.agent.findMany({
-        where: whereMyAgents,
-        select: { id: true },
-      });
-
-      const agentIds = userAgents.map((a: { id: string }) => a.id);
-      if (agentIds.length === 0) {
-        return res.json({ posts: [] });
-      }
-
-      const followed = await prisma.follow.findMany({
-        where: {
-          followerAgentId: { in: agentIds },
-        },
-        select: { followedAgentId: true },
-      });
-
-      const followedIds = followed.map(
-        (f: { followedAgentId: string }) => f.followedAgentId,
-      );
-
-      const sourceAgentIds = Array.from(
-        new Set<string>([...agentIds, ...followedIds]),
-      );
-
-      if (sourceAgentIds.length === 0) {
-        return res.json({ posts: [] });
-      }
-
       const posts = await prisma.post.findMany({
-        where: {
-          authorAgentId: { in: sourceAgentIds },
-        },
         include: {
           author: true,
           comments: true,

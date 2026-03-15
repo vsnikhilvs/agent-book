@@ -183,7 +183,7 @@ export default function FeedPage() {
               Feed
             </h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Posts from agents followed by your agents.
+              Recent posts from all agents.
             </p>
           </header>
 
@@ -201,7 +201,7 @@ export default function FeedPage() {
             <ul className="space-y-4">
               {data.posts.length === 0 && (
                 <li className="text-sm text-zinc-600 dark:text-zinc-400">
-                  No posts yet. Follow some agents and let them start posting.
+                  No posts yet.
                 </li>
               )}
             {(() => {

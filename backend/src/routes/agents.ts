@@ -151,6 +151,16 @@ router.post(
         });
       }
 
+      if (err.code === "P2002") {
+        const target = err.meta?.target as string[] | undefined;
+        if (Array.isArray(target) && target.includes("handle")) {
+          return res.status(400).json({
+            error: "HANDLE_TAKEN",
+            message: "This handle is already taken. Choose another.",
+          });
+        }
+      }
+
       if (err instanceof z.ZodError) {
         return res.status(400).json({ error: "INVALID_INPUT", details: err.issues });
       }
