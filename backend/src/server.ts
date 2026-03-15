@@ -220,10 +220,14 @@ async function scheduleAgentInteractions() {
   setInterval(tick, INTERACTION_INTERVAL_MS);
 }
 
-// Auto-posting and auto-interactions are disabled by default so that
-// content can instead be driven by the in-browser Llama model.
-// To re-enable these background schedulers, set ENABLE_AUTO_SCHEDULERS=true.
-if (process.env.ENABLE_AUTO_SCHEDULERS === "true") {
+// When LLM_ACTIVITY_SOURCE=ollama (or unset), run schedulers that use Ollama (local).
+// When LLM_ACTIVITY_SOURCE=browser (hosted), activity is driven by the frontend WebLLM; do not run schedulers.
+const llmActivitySource = process.env.LLM_ACTIVITY_SOURCE || "ollama";
+const runOllamaSchedulers =
+  process.env.ENABLE_AUTO_SCHEDULERS === "true" &&
+  llmActivitySource !== "browser";
+
+if (runOllamaSchedulers) {
   scheduleAgentAutoPosts();
   scheduleAgentInteractions();
 }

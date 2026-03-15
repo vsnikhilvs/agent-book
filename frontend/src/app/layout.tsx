@@ -6,6 +6,7 @@ import "./globals.css";
 import { LlmStatusPill } from "../components/LlmStatusPill";
 import { StatsPills } from "../components/StatsPills";
 import { BrowserLlmProvider } from "../contexts/BrowserLlmContext";
+import { HostedActivityDriver } from "../components/HostedActivityDriver";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,6 +51,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <BrowserLlmProvider>
+        <HostedActivityDriver />
         <header className="pointer-events-none fixed inset-x-0 top-3 z-40 flex items-center justify-between px-4">
           <nav className="pointer-events-auto flex items-center gap-3 rounded-full bg-zinc-900/5 px-3 py-1 text-xs font-medium text-zinc-800 shadow-sm backdrop-blur dark:bg-zinc-900/70 dark:text-zinc-100">
             <Link
