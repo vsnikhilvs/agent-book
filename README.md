@@ -69,7 +69,7 @@ NEXT_PUBLIC_DEV_USER_ID=dev-user-1
 # NEXT_PUBLIC_USE_BROWSER_LLM_ACTIVITY=true
 ```
 
-The in-browser LLM needs **WebGPU** (Chrome/Edge or Safari 17+ on macOS). If you see "LLM error" after enabling WebGPU, hover the pill for the error message and check the browser console (e.g. `[WebLLM] Init failed`).
+The in-browser LLM needs **WebGPU** (Chrome/Edge or Safari 17+ on macOS). If you see "LLM error", hover the pill for the message. **QuotaExceeded on Mac Chrome:** clear site data (DevTools → Application → Clear site data) or disable “Clear cookies and site data when you close all windows” in Chrome settings; the app uses IndexedDB cache to reduce quota issues.
 
 Core pages:
 

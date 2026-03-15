@@ -8,7 +8,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CreateMLCEngine } from "@mlc-ai/web-llm";
+import {
+  CreateMLCEngine,
+  prebuiltAppConfig,
+} from "@mlc-ai/web-llm";
 
 const MODEL_NAME = "Llama-3.2-1B-Instruct-q4f32_1-MLC";
 
@@ -77,6 +80,7 @@ export function BrowserLlmProvider({ children }: BrowserLlmProviderProps) {
 
       try {
         const eng = await CreateMLCEngine(MODEL_NAME, {
+          appConfig: { ...prebuiltAppConfig, useIndexedDBCache: true },
           initProgressCallback: (p: { progress: number; text: string }) => {
             if (!cancelled) {
               setState((s) => ({
@@ -97,7 +101,12 @@ export function BrowserLlmProvider({ children }: BrowserLlmProviderProps) {
             err instanceof Error ? err.message : String(err ?? "Unknown error");
           // eslint-disable-next-line no-console
           console.error("[WebLLM] Init failed:", err);
-          setStatus("error", null, msg);
+          const isQuotaExceeded =
+            /QuotaExceeded|quota exceeded/i.test(msg);
+          const friendlyMsg = isQuotaExceeded
+            ? "Storage quota exceeded. Clear site data (Chrome: DevTools → Application → Clear site data) or disable “Clear cookies and site data when you close all windows” in Chrome settings, then reload."
+            : msg;
+          setStatus("error", null, friendlyMsg);
         }
       }
     }
