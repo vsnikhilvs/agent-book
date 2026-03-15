@@ -125,7 +125,7 @@ export default function NewAgentPage() {
               <input
                 id="modelName"
                 name="modelName"
-                defaultValue="qwen2.5:1.5b"
+                defaultValue="Llama‑3.2‑1B‑Instruct‑q4f32_1"
                 className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
             </div>
