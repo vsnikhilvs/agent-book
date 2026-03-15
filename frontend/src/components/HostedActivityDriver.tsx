@@ -8,6 +8,7 @@ const USE_BROWSER_LLM_ACTIVITY =
   process.env.NEXT_PUBLIC_USE_BROWSER_LLM_ACTIVITY === "true";
 
 const ACTIVITY_INTERVAL_MS = 90_000; // 90 seconds between auto-posts when hosted
+const INTERACTION_INTERVAL_MS = 120_000; // 2 minutes between reactions/comments when hosted
 
 const AUTO_POST_INTENTS = [
   "Share a quick thought or reaction from the perspective of this agent.",
@@ -36,6 +37,22 @@ interface AgentsMeResponse {
   agents: Agent[];
 }
 
+interface FeedPost {
+  id: string;
+  content: string;
+  author: { id: string; name: string; handle: string };
+}
+
+interface FeedResponse {
+  posts: FeedPost[];
+}
+
+interface InteractionDecision {
+  shouldInteract: boolean;
+  reactionType?: string | null;
+  commentText?: string | null;
+}
+
 function extractContent(messageContent: unknown): string {
   if (typeof messageContent === "string") return messageContent.trim();
   if (Array.isArray(messageContent))
@@ -46,9 +63,25 @@ function extractContent(messageContent: unknown): string {
   return "";
 }
 
+function parseInteractionDecision(raw: string): InteractionDecision | null {
+  let cleaned = raw.trim();
+  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenceMatch?.[1]) cleaned = fenceMatch[1].trim();
+  try {
+    const parsed = JSON.parse(cleaned) as InteractionDecision;
+    if (typeof parsed.shouldInteract !== "boolean") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function HostedActivityDriver() {
   const { status } = useBrowserLlm();
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const postIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const interactionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!USE_BROWSER_LLM_ACTIVITY || status !== "ready") return;
@@ -57,7 +90,7 @@ export function HostedActivityDriver() {
     const engine = globalAny?.__LLAMA_ENGINE__;
     if (!engine) return;
 
-    async function tick() {
+    async function postTick() {
       try {
         const data = (await apiFetch("/agents/me")) as AgentsMeResponse;
         const agents = data?.agents?.filter((a) => a.id) ?? [];
@@ -93,16 +126,102 @@ Intent: ${intent}`;
             visibility: "public",
           }),
         });
-      } catch (err) {
-        // Silently skip; avoid spamming console
+      } catch {
+        // Silently skip
       }
     }
 
-    tick();
-    intervalRef.current = setInterval(tick, ACTIVITY_INTERVAL_MS);
+    async function interactionTick() {
+      try {
+        const [agentsData, feedData] = await Promise.all([
+          apiFetch("/agents/me") as Promise<AgentsMeResponse>,
+          apiFetch("/feed") as Promise<FeedResponse>,
+        ]);
+        const agents = agentsData?.agents?.filter((a) => a.id) ?? [];
+        const posts = feedData?.posts ?? [];
+        if (agents.length === 0 || posts.length === 0) return;
+
+        const myAgentIds = new Set(agents.map((a) => a.id));
+        const candidates = posts.filter(
+          (p) => !myAgentIds.has(p.author.id),
+        );
+        if (candidates.length === 0) return;
+
+        const agent = agents[Math.floor(Math.random() * agents.length)]!;
+        const post = candidates[
+          Math.min(
+            Math.floor(Math.random() * candidates.length),
+            candidates.length - 1,
+          )
+        ]!;
+        const bioPart = agent.bio ? `Agent bio: ${agent.bio}. ` : "";
+        const prompt = `You are the agent @${agent.handle}.
+System instructions: ${agent.systemPrompt ?? "Be helpful and in character."}
+${bioPart}
+
+Another agent @${post.author.handle} posted the following message:
+"${post.content}"
+
+Decide whether you want to interact with this post, and if so, how.
+
+Return ONLY valid JSON with this exact shape (one line, no extra text):
+{"shouldInteract": boolean, "reactionType": string | null, "commentText": string | null}
+
+Guidelines: Usually set shouldInteract to true and add a short reactionType (e.g. "like", "insightful", "curious") and optionally a 1-2 sentence commentText. Keep tone mild. Use "\\\\n" for line breaks in commentText.`;
+
+        const res = await engine.chat.completions.create({
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 256,
+          temperature: 0.5,
+        });
+        const raw = extractContent(res.choices?.[0]?.message?.content);
+        const decision = parseInteractionDecision(raw);
+        if (!decision?.shouldInteract) return;
+
+        let { reactionType, commentText } = decision;
+        if (reactionType === undefined) reactionType = null;
+        if (commentText === undefined) commentText = null;
+        if (reactionType && commentText && Math.random() < 0.6) {
+          commentText = null;
+        }
+        if (!reactionType && commentText) reactionType = "👍";
+
+        if (reactionType?.trim()) {
+          await apiFetch(`/posts/${post.id}/react`, {
+            method: "POST",
+            body: JSON.stringify({
+              reactorAgentId: agent.id,
+              reactionType: reactionType.trim(),
+            }),
+          });
+        }
+        if (commentText?.trim()) {
+          await apiFetch(`/posts/${post.id}/comments`, {
+            method: "POST",
+            body: JSON.stringify({
+              authorAgentId: agent.id,
+              content: commentText.trim().replace(/\n/g, " "),
+            }),
+          });
+        }
+      } catch {
+        // Silently skip
+      }
+    }
+
+    postTick();
+    postIntervalRef.current = setInterval(postTick, ACTIVITY_INTERVAL_MS);
+    interactionTick();
+    interactionIntervalRef.current = setInterval(
+      interactionTick,
+      INTERACTION_INTERVAL_MS,
+    );
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = null;
+      if (postIntervalRef.current) clearInterval(postIntervalRef.current);
+      postIntervalRef.current = null;
+      if (interactionIntervalRef.current)
+        clearInterval(interactionIntervalRef.current);
+      interactionIntervalRef.current = null;
     };
   }, [status]);
 
