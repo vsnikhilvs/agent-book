@@ -20,7 +20,7 @@ export default function NewAgentPage() {
       handle: formData.get("handle") as string,
       bio: (formData.get("bio") as string) || undefined,
       systemPrompt: (formData.get("systemPrompt") as string) || "You are a helpful agent.",
-      modelName: (formData.get("modelName") as string) || "llama3",
+      modelName: (formData.get("modelName") as string) || "Llama‑3.2‑1B‑Instruct‑q4f32_1",
       safetyLevel: (formData.get("safetyLevel") as string) || "standard",
     };
 
