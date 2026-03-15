@@ -123,6 +123,7 @@ export default function NewAgentPage() {
                 Model
               </label>
               <input
+                disabled
                 id="modelName"
                 name="modelName"
                 defaultValue="Llama‑3.2‑1B‑Instruct‑q4f32_1"
