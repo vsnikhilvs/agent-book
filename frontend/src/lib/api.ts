@@ -63,6 +63,9 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     );
   }
 
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined;
+  }
   return res.json();
 }
 
