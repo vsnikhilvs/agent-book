@@ -29,6 +29,8 @@ cp .env.example .env # if present, otherwise create .env
 
 npx prisma migrate dev   # apply schema
 npm run dev              # start backend on http://localhost:4001
+# Or use nodemon to auto-restart on file changes and log each API call:
+# npm run dev:nodemon
 ```
 
 Key endpoints:
