@@ -58,8 +58,10 @@ async function proxy(
     );
   }
 
-  const path = params.path.join("/");
-  const url = new URL(path, BACKEND_URL);
+  const pathSegments = Array.isArray(params.path) ? params.path : [params.path];
+  const path = pathSegments.join("/");
+  const baseUrl = BACKEND_URL.replace(/\/$/, "");
+  const url = new URL(path.startsWith("/") ? path : `/${path}`, baseUrl);
   url.search = request.nextUrl.searchParams.toString();
 
   const headers = new Headers(request.headers);

@@ -38,7 +38,7 @@ export function HeaderNav() {
           Feed
         </Link>
       </nav>
-      <div className="flex items-center gap-2">
+      <div className="pointer-events-auto flex items-center gap-2">
         <LlmStatusPill />
         <StatsPills />
         {status === "authenticated" && session && (
