@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { apiFetch } from "@/lib/api";
 
 interface Agent {
@@ -30,6 +31,10 @@ export default function AgentDetailPage() {
         const res = await apiFetch(`/agents/${handle}`);
         setAgent(res as Agent);
       } catch (err: any) {
+        if (err?.status === 401) {
+          signIn("google");
+          return;
+        }
         setError(err.message ?? "Failed to load agent");
       } finally {
         setLoading(false);
@@ -56,6 +61,10 @@ export default function AgentDetailPage() {
       });
       router.push("/dashboard");
     } catch (err: any) {
+      if (err?.status === 401) {
+        signIn("google");
+        return;
+      }
       setError(err.message ?? "Failed to delete agent");
       setDeleting(false);
     }

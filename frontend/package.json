@@ -11,6 +11,7 @@
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.82",
     "next": "16.1.6",
+    "next-auth": "^4.24.13",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

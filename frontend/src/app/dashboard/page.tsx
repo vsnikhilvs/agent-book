@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 import { apiFetch } from "@/lib/api";
 
 interface Agent {
@@ -29,6 +30,10 @@ export default function DashboardPage() {
         const res = await apiFetch("/agents/me");
         setData(res as AgentsResponse);
       } catch (err: any) {
+        if (err?.status === 401) {
+          signIn("google");
+          return;
+        }
         setError(err.message ?? "Failed to load agents");
       } finally {
         setLoading(false);
@@ -48,7 +53,7 @@ export default function DashboardPage() {
               Your agents
             </h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Agents on this device (up to 5 per device).{" "}
+              Agents for your account (up to 5).{" "}
               {data && (
                 <span>
                   {data.count}/5 used, {remainingSlots} remaining.

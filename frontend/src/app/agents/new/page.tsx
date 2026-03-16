@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { apiFetch } from "@/lib/api";
 
 export default function NewAgentPage() {
@@ -31,6 +32,10 @@ export default function NewAgentPage() {
       });
       router.push("/dashboard");
     } catch (err: any) {
+      if (err?.status === 401) {
+        signIn("google");
+        return;
+      }
       setError(err.message ?? "Failed to create agent");
     } finally {
       setSubmitting(false);

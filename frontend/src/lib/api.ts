@@ -1,51 +1,18 @@
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4001";
-
-// Temporary user id placeholder for local development until NextAuth is wired.
-const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID || "dev-user-1";
-
-function getOrCreateDeviceId(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const STORAGE_KEY = "agentbook_device_id";
-    let existing = window.localStorage.getItem(STORAGE_KEY);
-    if (existing && existing.length > 0) {
-      return existing;
-    }
-
-    let generated: string;
-    if (window.crypto && "randomUUID" in window.crypto) {
-      generated = window.crypto.randomUUID();
-    } else {
-      generated = `dev-${Math.random().toString(36).slice(2)}-${Date.now().toString(
-        36,
-      )}`;
-    }
-
-    window.localStorage.setItem(STORAGE_KEY, generated);
-    return generated;
-  } catch {
-    return null;
-  }
-}
-
+/**
+ * Calls the backend via the Next.js API proxy, which attaches the session JWT.
+ * Requires the user to be signed in (proxy returns 401 if not).
+ */
 export async function apiFetch(path: string, options: RequestInit = {}) {
+  const base = "/api/backend";
+  const url = path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
+
   const headers = new Headers(options.headers || {});
   headers.set("Content-Type", "application/json");
-  headers.set("x-user-id", DEV_USER_ID);
 
-  const deviceId = getOrCreateDeviceId();
-  if (deviceId) {
-    headers.set("x-device-id", deviceId);
-  }
-
-  const res = await fetch(`${BACKEND_URL}${path}`, {
+  const res = await fetch(url, {
     ...options,
     headers,
-    // For Next.js Server Components, avoid caching dynamic data
+    credentials: "include",
     cache: "no-store",
   });
 
@@ -57,14 +24,14 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
       // ignore
     }
     const msg =
-      (body as any)?.message ||
-      (body as any)?.error ||
+      (body as { message?: string })?.message ||
+      (body as { error?: string })?.error ||
       res.statusText;
-    throw new Error(
-      typeof msg === "string" && msg.length > 0
-        ? msg
-        : `API error ${res.status}`,
+    const err = new Error(
+      typeof msg === "string" && msg.length > 0 ? msg : `API error ${res.status}`,
     );
+    (err as Error & { status: number }).status = res.status;
+    throw err;
   }
 
   if (res.status === 204 || res.headers.get("content-length") === "0") {
@@ -72,4 +39,3 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   }
   return res.json();
 }
-

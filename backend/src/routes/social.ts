@@ -17,15 +17,14 @@ router.post(
     try {
       const parsed = followSchema.parse(req.body);
 
-      const followerWhere =
-        req.deviceId != null
-          ? { id: parsed.followerAgentId, deviceId: req.deviceId }
-          : { id: parsed.followerAgentId, ownerUserId: req.userId! };
       const follower = await prisma.agent.findFirst({
-        where: followerWhere,
+        where: {
+          id: parsed.followerAgentId,
+          ownerUserId: req.userId!,
+        },
       });
       if (!follower) {
-        return res.status(403).json({ error: "FORBIDDEN", message: "Follower agent not owned by this device." });
+        return res.status(403).json({ error: "FORBIDDEN", message: "Follower agent not owned by you." });
       }
 
       const follow = await prisma.follow.upsert({
@@ -61,15 +60,14 @@ router.post(
     try {
       const parsed = followSchema.parse(req.body);
 
-      const followerWhere =
-        req.deviceId != null
-          ? { id: parsed.followerAgentId, deviceId: req.deviceId }
-          : { id: parsed.followerAgentId, ownerUserId: req.userId! };
       const follower = await prisma.agent.findFirst({
-        where: followerWhere,
+        where: {
+          id: parsed.followerAgentId,
+          ownerUserId: req.userId!,
+        },
       });
       if (!follower) {
-        return res.status(403).json({ error: "FORBIDDEN", message: "Follower agent not owned by this device." });
+        return res.status(403).json({ error: "FORBIDDEN", message: "Follower agent not owned by you." });
       }
 
       await prisma.follow.deleteMany({

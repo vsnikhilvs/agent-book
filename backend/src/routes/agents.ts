@@ -5,26 +5,6 @@ import { requireUser, AuthenticatedRequest } from "../middleware/auth";
 
 const router = express.Router();
 
-async function ensureUserExists(userId: string) {
-  const existing = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  if (existing) {
-    return existing;
-  }
-
-  return prisma.user.create({
-    data: {
-      id: userId,
-      oauthProvider: "dev",
-      oauthProviderId: userId,
-      email: `${userId}@example.dev`,
-      displayName: userId,
-    },
-  });
-}
-
 const createAgentSchema = z.object({
   name: z.string().min(1),
   handle: z.string().min(3),
@@ -36,30 +16,21 @@ const createAgentSchema = z.object({
 });
 
 const PER_USER_AGENT_LIMIT = 5;
-const PER_DEVICE_AGENT_LIMIT = 5;
 const AUTO_AGENT_LIMIT = 500;
 const GLOBAL_AGENT_LIMIT = 10_000;
 
 async function enforceAgentLimits(
-  ownerUserId: string | null,
+  ownerUserId: string,
   originType: "human_created" | "auto_created",
-  deviceId: string | null,
 ) {
-  const [totalAgents, autoAgents, userAgents, deviceAgents] = await Promise.all([
+  const [totalAgents, autoAgents, userAgents] = await Promise.all([
     prisma.agent.count(),
     prisma.agent.count({
       where: { originType: "auto_created" },
     }),
-    ownerUserId
-      ? prisma.agent.count({
-          where: { ownerUserId },
-        })
-      : Promise.resolve(0),
-    deviceId
-      ? prisma.agent.count({
-          where: { deviceId },
-        })
-      : Promise.resolve(0),
+    prisma.agent.count({
+      where: { ownerUserId },
+    }),
   ]);
 
   if (totalAgents >= GLOBAL_AGENT_LIMIT) {
@@ -74,22 +45,12 @@ async function enforceAgentLimits(
     throw error;
   }
 
-  // When deviceId is present, enforce only per-device limit (5 per device).
-  // When deviceId is absent, enforce per-user limit (5 per user).
   if (
     originType === "human_created" &&
-    ownerUserId &&
-    !deviceId &&
     userAgents >= PER_USER_AGENT_LIMIT
   ) {
     const error: any = new Error("Per-user agent limit reached");
     error.code = "PER_USER_LIMIT_REACHED";
-    throw error;
-  }
-
-  if (originType === "human_created" && deviceId && deviceAgents >= PER_DEVICE_AGENT_LIMIT) {
-    const error: any = new Error("Per-device agent limit reached");
-    error.code = "PER_DEVICE_LIMIT_REACHED";
     throw error;
   }
 }
@@ -101,16 +62,13 @@ router.post(
     try {
       const parsed = createAgentSchema.parse(req.body);
       const ownerUserId = req.userId!;
-      const deviceId = req.deviceId ?? null;
 
-      await ensureUserExists(ownerUserId);
-
-      await enforceAgentLimits(ownerUserId, "human_created", deviceId);
+      await enforceAgentLimits(ownerUserId, "human_created");
 
       const agent = await prisma.agent.create({
         data: {
           ownerUserId,
-          deviceId,
+          deviceId: null,
           name: parsed.name,
           handle: parsed.handle,
           bio: parsed.bio ?? null,
@@ -129,12 +87,6 @@ router.post(
         return res.status(400).json({
           error: "PER_USER_LIMIT_REACHED",
           message: "You’ve reached your 5-agent limit.",
-        });
-      }
-      if (err.code === "PER_DEVICE_LIMIT_REACHED") {
-        return res.status(400).json({
-          error: "PER_DEVICE_LIMIT_REACHED",
-          message: "This device has reached its 5-agent limit.",
         });
       }
       if (err.code === "AUTO_AGENT_LIMIT_REACHED") {
@@ -174,24 +126,18 @@ router.post(
 
 router.get("/me", requireUser, async (req: AuthenticatedRequest, res) => {
   const ownerUserId = req.userId!;
-  const deviceId = req.deviceId ?? null;
-
-  const where = deviceId
-    ? { deviceId }
-    : { ownerUserId };
 
   const agents = await prisma.agent.findMany({
-    where,
+    where: { ownerUserId },
     orderBy: { createdAt: "desc" },
   });
 
   const count = agents.length;
-  const limit = deviceId ? PER_DEVICE_AGENT_LIMIT : PER_USER_AGENT_LIMIT;
 
   res.json({
     agents,
     count,
-    remainingSlots: Math.max(0, limit - count),
+    remainingSlots: Math.max(0, PER_USER_AGENT_LIMIT - count),
   });
 });
 

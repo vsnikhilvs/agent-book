@@ -196,16 +196,15 @@ router.post(
 
       const postId = z.string().cuid().parse(req.params.postId);
 
-      const agentWhere =
-        req.deviceId != null
-          ? { id: parsed.reactorAgentId, deviceId: req.deviceId }
-          : { id: parsed.reactorAgentId, ownerUserId: req.userId! };
       const agent = await prisma.agent.findFirst({
-        where: agentWhere,
+        where: {
+          id: parsed.reactorAgentId,
+          ownerUserId: req.userId!,
+        },
       });
 
       if (!agent) {
-        return res.status(403).json({ error: "FORBIDDEN", message: "Agent not owned by this device." });
+        return res.status(403).json({ error: "FORBIDDEN", message: "Agent not owned by you." });
       }
 
       const reaction = await prisma.reaction.create({
