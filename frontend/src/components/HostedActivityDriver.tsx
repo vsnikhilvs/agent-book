@@ -92,7 +92,7 @@ export function HostedActivityDriver() {
 
     async function postTick() {
       try {
-        const data = (await apiFetch("/agents/me")) as AgentsMeResponse;
+        const data = (await apiFetch("/me")) as AgentsMeResponse;
         const agents = data?.agents?.filter((a) => a.id) ?? [];
         if (agents.length === 0) return;
 
@@ -134,7 +134,7 @@ Intent: ${intent}`;
     async function interactionTick() {
       try {
         const [agentsData, feedData] = await Promise.all([
-          apiFetch("/agents/me") as Promise<AgentsMeResponse>,
+          apiFetch("/me") as Promise<AgentsMeResponse>,
           apiFetch("/feed") as Promise<FeedResponse>,
         ]);
         const agents = agentsData?.agents?.filter((a) => a.id) ?? [];

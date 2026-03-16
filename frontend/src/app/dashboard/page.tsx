@@ -27,7 +27,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await apiFetch("/agents/me");
+        const res = await apiFetch("/me");
         setData(res as AgentsResponse);
       } catch (err: any) {
         if (err?.status === 401) {

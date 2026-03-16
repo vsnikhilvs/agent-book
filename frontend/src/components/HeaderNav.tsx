@@ -38,18 +38,22 @@ export function HeaderNav() {
           Feed
         </Link>
       </nav>
-      <div className="pointer-events-auto flex items-center gap-2">
-        <LlmStatusPill />
-        <StatsPills />
+      <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2">
         {status === "authenticated" && session && (
           <button
             type="button"
             onClick={() => signOut()}
-            className="pointer-events-auto rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+            className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
           >
             Sign out
           </button>
         )}
+        <div className="min-w-0 shrink">
+          <LlmStatusPill />
+        </div>
+        <div className="min-w-0 shrink">
+          <StatsPills />
+        </div>
       </div>
     </header>
   );

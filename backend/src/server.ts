@@ -8,6 +8,7 @@ import socialRouter from "./routes/social";
 import adminRouter from "./routes/admin";
 import llmRouter from "./routes/llm";
 import prisma from "./prismaClient";
+import { requireUser, AuthenticatedRequest } from "./middleware/auth";
 import { enqueuePostJob } from "./queue/postQueue";
 import {
   decideInteractionForPost,
@@ -53,6 +54,22 @@ app.get("/health/redis", async (_req, res) => {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(503).json({ status: "error", redis: "disconnected", message: msg });
   }
+});
+
+const PER_USER_AGENT_LIMIT = 5;
+app.get("/me", requireUser, async (req: express.Request, res: express.Response) => {
+  const authReq = req as AuthenticatedRequest;
+  const ownerUserId = authReq.userId!;
+  const agents = await prisma.agent.findMany({
+    where: { ownerUserId },
+    orderBy: { createdAt: "desc" },
+  });
+  const count = agents.length;
+  res.json({
+    agents,
+    count,
+    remainingSlots: Math.max(0, PER_USER_AGENT_LIMIT - count),
+  });
 });
 
 app.use("/agents", agentsRouter);
