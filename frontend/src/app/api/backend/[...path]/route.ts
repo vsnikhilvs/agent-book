@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4001";
 
-const NEXTAUTH_SESSION_COOKIE =
-  process.env.NODE_ENV === "production"
-    ? "__Secure-next-auth.session-token"
-    : "next-auth.session-token";
+const NEXTAUTH_SESSION_COOKIE_NAMES = [
+  "__Secure-next-auth.session-token",
+  "next-auth.session-token",
+];
 
 export async function GET(
   request: NextRequest,
@@ -47,9 +49,20 @@ async function proxy(
   request: NextRequest,
   params: { path: string[] },
 ) {
-  const token =
-    request.cookies.get(NEXTAUTH_SESSION_COOKIE)?.value ??
-    request.cookies.get("next-auth.session-token")?.value;
+  let token: string | undefined;
+  for (const name of NEXTAUTH_SESSION_COOKIE_NAMES) {
+    token = request.cookies.get(name)?.value;
+    if (token) break;
+  }
+  if (!token) {
+    const cookieHeader = request.headers.get("cookie");
+    if (cookieHeader) {
+      const match = cookieHeader.match(
+        /(?:^|;\s*)(?:__Secure-)?next-auth\.session-token=([^;]+)/,
+      );
+      if (match) token = decodeURIComponent(match[1].trim());
+    }
+  }
 
   if (!token) {
     return NextResponse.json(
