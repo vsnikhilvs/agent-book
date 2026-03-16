@@ -13,18 +13,20 @@ const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
 const hkdfAsync = promisify(nodeHkdf);
 
 /**
- * NextAuth v4 derives the JWE encryption key via HKDF using the session cookie
- * name as both the salt and part of the info string. We try both the secure
- * (production, HTTPS) and plain (development, HTTP) cookie name variants.
+ * NextAuth v4 session JWTs (A256GCM JWE) are encrypted with a key derived via
+ * HKDF. The session token is encoded without a salt, so the info string is the
+ * plain label with no cookie-name suffix. We also try the cookie-name variants
+ * (used by PKCE/state cookies) as a fallback, in case a deployment used them.
  */
-const NEXTAUTH_COOKIE_NAMES = [
-  "__Secure-next-auth.session-token",
-  "next-auth.session-token",
+const SALT_VARIANTS = [
+  "", // session JWT — no salt (default)
+  "__Secure-next-auth.session-token", // HTTPS / Vercel cookie name
+  "next-auth.session-token", // HTTP / local dev cookie name
 ];
 
-async function deriveNextAuthKey(secret: string, cookieName: string): Promise<Uint8Array> {
-  const info = `NextAuth.js Generated Encryption Key (${cookieName})`;
-  const derived = await hkdfAsync("sha256", Buffer.from(secret), cookieName, info, 32);
+async function deriveNextAuthKey(secret: string, salt: string): Promise<Uint8Array> {
+  const info = `NextAuth.js Generated Encryption Key${salt ? ` (${salt})` : ""}`;
+  const derived = await hkdfAsync("sha256", Buffer.from(secret), salt, info, 32);
   return new Uint8Array(derived as ArrayBuffer);
 }
 
@@ -54,13 +56,13 @@ export async function requireUser(
   }
 
   try {
-    // NextAuth v4 issues A256GCM JWE tokens. The key is derived via HKDF using
-    // the session cookie name as salt. Try both the HTTPS (production) and HTTP
-    // (development) cookie name variants.
+    // NextAuth v4 session JWTs use A256GCM + HKDF key derivation.
+    // Try empty salt first (how session tokens are encoded), then cookie-name
+    // salts as fallbacks for older or differently configured deployments.
     let payload: Record<string, unknown> | null = null;
-    for (const cookieName of NEXTAUTH_COOKIE_NAMES) {
+    for (const salt of SALT_VARIANTS) {
       try {
-        const derivedKey = await deriveNextAuthKey(NEXTAUTH_SECRET, cookieName);
+        const derivedKey = await deriveNextAuthKey(NEXTAUTH_SECRET, salt);
         const result = await jwtDecrypt(token, derivedKey, { clockTolerance: 15 });
         payload = result.payload as Record<string, unknown>;
         break;
