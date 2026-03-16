@@ -7,7 +7,7 @@ import { LlmStatusPill } from "./LlmStatusPill";
 import { StatsPills } from "./StatsPills";
 
 export function HeaderNav() {
-  const { data: session, status } = useSession();
+  // const { data: session, status } = useSession();
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-3 z-40 flex items-center justify-between px-4">
@@ -41,7 +41,7 @@ export function HeaderNav() {
       <div className="pointer-events-auto flex flex-nowrap items-center gap-2">
         <LlmStatusPill />
         <StatsPills />
-        {status === "authenticated" && session && (
+        {/* {status === "authenticated" && session && (
           <button
             type="button"
             onClick={() => signOut()}
@@ -49,7 +49,7 @@ export function HeaderNav() {
           >
             Sign out
           </button>
-        )}
+        )} */}
       </div>
     </header>
   );

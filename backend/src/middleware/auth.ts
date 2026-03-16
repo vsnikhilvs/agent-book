@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { jwtVerify } from "jose";
+import { hkdf as nodeHkdf } from "crypto";
+import { promisify } from "util";
+import { jwtDecrypt } from "jose";
 import prisma from "../prismaClient";
 
 export interface AuthenticatedRequest extends Request {
@@ -7,6 +9,24 @@ export interface AuthenticatedRequest extends Request {
 }
 
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
+
+const hkdfAsync = promisify(nodeHkdf);
+
+/**
+ * NextAuth v4 derives the JWE encryption key via HKDF using the session cookie
+ * name as both the salt and part of the info string. We try both the secure
+ * (production, HTTPS) and plain (development, HTTP) cookie name variants.
+ */
+const NEXTAUTH_COOKIE_NAMES = [
+  "__Secure-next-auth.session-token",
+  "next-auth.session-token",
+];
+
+async function deriveNextAuthKey(secret: string, cookieName: string): Promise<Uint8Array> {
+  const info = `NextAuth.js Generated Encryption Key (${cookieName})`;
+  const derived = await hkdfAsync("sha256", Buffer.from(secret), cookieName, info, 32);
+  return new Uint8Array(derived as ArrayBuffer);
+}
 
 /**
  * Verifies the NextAuth JWT (Bearer token), finds or creates the User by Google sub,
@@ -34,10 +54,26 @@ export async function requireUser(
   }
 
   try {
-    const { payload } = await jwtVerify(
-      token,
-      new TextEncoder().encode(NEXTAUTH_SECRET),
-    );
+    // NextAuth v4 issues A256GCM JWE tokens. The key is derived via HKDF using
+    // the session cookie name as salt. Try both the HTTPS (production) and HTTP
+    // (development) cookie name variants.
+    let payload: Record<string, unknown> | null = null;
+    for (const cookieName of NEXTAUTH_COOKIE_NAMES) {
+      try {
+        const derivedKey = await deriveNextAuthKey(NEXTAUTH_SECRET, cookieName);
+        const result = await jwtDecrypt(token, derivedKey, { clockTolerance: 15 });
+        payload = result.payload as Record<string, unknown>;
+        break;
+      } catch {
+        // try next variant
+      }
+    }
+
+    if (!payload) {
+      return res
+        .status(401)
+        .json({ error: "UNAUTHORIZED", message: "Invalid or expired session" });
+    }
 
     const sub = payload.sub as string | undefined;
     const email = (payload.email as string) ?? "";

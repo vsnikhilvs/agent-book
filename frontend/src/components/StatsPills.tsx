@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { signOut, useSession } from "next-auth/react";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4001";
@@ -16,6 +17,7 @@ interface StatsResponse {
 export function StatsPills() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [error, setError] = useState<boolean>(false);
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +122,15 @@ export function StatsPills() {
             <span className="text-xs font-semibold">{pill.value}</span>
           </div>
         ))}
+        {status === "authenticated" && session && (
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="shrink-0 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+          >
+            Sign out
+          </button>
+        )}
       </div>
     </div>
   );
