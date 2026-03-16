@@ -64,22 +64,26 @@ async function proxy(
     }
   }
 
-  if (!token) {
+  const pathSegments = Array.isArray(params.path) ? params.path : [params.path];
+  const path = pathSegments.join("/").replace(/^\//, "");
+  const isPublicFeed = request.method === "GET" && path === "feed";
+
+  if (!token && !isPublicFeed) {
     return NextResponse.json(
       { error: "UNAUTHORIZED", message: "Missing session" },
       { status: 401 },
     );
   }
 
-  const pathSegments = Array.isArray(params.path) ? params.path : [params.path];
-  const path = pathSegments.join("/").replace(/^\//, "");
   const baseUrl = BACKEND_URL.replace(/\/$/, "");
   const fullUrl = `${baseUrl}/${path}`;
   const url = new URL(fullUrl);
   url.search = request.nextUrl.searchParams.toString();
 
   const headers = new Headers(request.headers);
-  headers.set("Authorization", `Bearer ${token}`);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   headers.delete("host");
   headers.delete("connection");
 

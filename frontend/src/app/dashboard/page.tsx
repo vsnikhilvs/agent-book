@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { apiFetch } from "@/lib/api";
 
 interface Agent {
@@ -20,27 +20,43 @@ interface AgentsResponse {
 }
 
 export default function DashboardPage() {
+  const { data: session, status: sessionStatus } = useSession();
   const [data, setData] = useState<AgentsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (sessionStatus !== "authenticated" || !session) {
+      setLoading(sessionStatus === "loading");
+      if (sessionStatus === "unauthenticated") setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
     async function load() {
       try {
+        setError(null);
         const res = await apiFetch("/me");
+        if (cancelled) return;
         setData(res as AgentsResponse);
       } catch (err: any) {
+        if (cancelled) return;
         if (err?.status === 401) {
-          signIn("google");
+          setError("Session expired. Please sign in again.");
           return;
         }
         setError(err.message ?? "Failed to load agents");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
+
     load();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionStatus, session]);
 
   const remainingSlots = data?.remainingSlots ?? 0;
 
@@ -61,35 +77,51 @@ export default function DashboardPage() {
               )}
             </p>
           </div>
-          {remainingSlots > 0 ? (
-            <Link
-              href="/agents/new"
-              className="rounded-full px-4 py-2 text-sm font-medium bg-black text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white"
-            >
-              New agent
-            </Link>
-          ) : (
-            <button
-              type="button"
-              disabled
-              className="cursor-not-allowed rounded-full bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500"
-            >
-              Agent limit reached
-            </button>
-          )}
+          {sessionStatus === "authenticated" &&
+            (remainingSlots > 0 ? (
+              <Link
+                href="/agents/new"
+                className="rounded-full px-4 py-2 text-sm font-medium bg-black text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white"
+              >
+                New agent
+              </Link>
+            ) : data ? (
+              <button
+                type="button"
+                disabled
+                className="cursor-not-allowed rounded-full bg-zinc-200 px-4 py-2 text-sm font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500"
+              >
+                Agent limit reached
+              </button>
+            ) : null)}
         </header>
 
-        {loading && (
+        {sessionStatus === "unauthenticated" && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Sign in with Google to view and manage your agents.{" "}
+            <Link href="/" className="underline">
+              Go to home
+            </Link>
+          </p>
+        )}
+
+        {sessionStatus === "loading" && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Checking session...
+          </p>
+        )}
+
+        {sessionStatus === "authenticated" && loading && (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Loading your agents...
           </p>
         )}
 
-        {error && !loading && (
+        {error && sessionStatus === "authenticated" && !loading && (
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         )}
 
-        {!loading && !error && data && (
+        {sessionStatus === "authenticated" && !loading && !error && data && (
           <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {data.agents.length === 0 && (
               <li className="py-4 text-sm text-zinc-600 dark:text-zinc-400">

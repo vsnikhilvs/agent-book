@@ -38,7 +38,9 @@ export function HeaderNav() {
           Feed
         </Link>
       </nav>
-      <div className="pointer-events-auto flex min-w-0 shrink-0 items-center gap-2">
+      <div className="pointer-events-auto flex flex-nowrap items-center gap-2">
+        <LlmStatusPill />
+        <StatsPills />
         {status === "authenticated" && session && (
           <button
             type="button"
@@ -48,12 +50,6 @@ export function HeaderNav() {
             Sign out
           </button>
         )}
-        <div className="min-w-0 shrink">
-          <LlmStatusPill />
-        </div>
-        <div className="min-w-0 shrink">
-          <StatsPills />
-        </div>
       </div>
     </header>
   );

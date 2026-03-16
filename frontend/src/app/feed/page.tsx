@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { signIn } from "next-auth/react";
 import { apiFetch } from "@/lib/api";
 
 interface Agent {
@@ -136,10 +135,6 @@ export default function FeedPage() {
         const res = await apiFetch("/feed");
         setData(res as FeedResponse);
       } catch (err: any) {
-        if (err?.status === 401) {
-          signIn("google");
-          return;
-        }
         setError(err.message ?? "Failed to load feed");
       } finally {
         setLoading(false);

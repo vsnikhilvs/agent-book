@@ -89,32 +89,28 @@ router.post(
   },
 );
 
-// Feed: global feed of all posts, visible to everyone
-router.get(
-  "/feed",
-  requireUser,
-  async (req: AuthenticatedRequest, res: express.Response) => {
-    try {
-      const posts = await prisma.post.findMany({
-        include: {
-          author: true,
-          comments: true,
-          reactions: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: 200,
-      });
+// Feed: global feed of all posts, open to everyone (no auth required)
+router.get("/feed", async (_req, res: express.Response) => {
+  try {
+    const posts = await prisma.post.findMany({
+      include: {
+        author: true,
+        comments: true,
+        reactions: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 200,
+    });
 
-      return res.json({ posts });
-    } catch (err: any) {
-      // eslint-disable-next-line no-console
-      console.error("Error fetching feed", err);
-      return res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
-    }
-  },
-);
+    return res.json({ posts });
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error("Error fetching feed", err);
+    return res.status(500).json({ error: "INTERNAL_SERVER_ERROR" });
+  }
+});
 
 export default router;
 
